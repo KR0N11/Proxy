@@ -26,7 +26,13 @@ struct AuthView: View {
             VStack(spacing: 25) {
                 Spacer()
                 
-                Text("PULSE")
+                Image("dogIcon")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)
+                        .shadow(radius: 10)
+                
+                Text("PROXY")
                     .font(.system(size: 48, weight: .heavy, design: .rounded))
                     .foregroundColor(.white)
                     .shadow(radius: 5)

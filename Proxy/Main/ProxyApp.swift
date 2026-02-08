@@ -7,22 +7,27 @@
 
 import SwiftUI
 import FirebaseCore
-
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication,
-                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        FirebaseApp.configure()
-        return true
-    }
-}
+import FirebaseAuth
 
 @main
 struct ProxyApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+   
+    @StateObject var viewModel = AppViewModel()
+    
+    init() {
+        FirebaseApp.configure()
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+
+            if viewModel.userSession != nil {
+                ContentView()
+                    .environmentObject(viewModel)
+            } else {
+                AuthView()
+                    .environmentObject(viewModel)
+            }
         }
     }
 }

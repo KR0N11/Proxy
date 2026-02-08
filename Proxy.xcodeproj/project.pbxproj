@@ -10,6 +10,7 @@
 		FCE13F3E2F38F7A60045937F /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FCE13F3D2F38F7A60045937F /* FirebaseCore */; };
 		FCE13F7A2F3908A80045937F /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FCE13F792F3908A80045937F /* FirebaseFirestore */; };
 		FCE13F842F3909C40045937F /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FCE13F832F3909C40045937F /* FirebaseAuth */; };
+		FCE13FAE2F3926970045937F /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = FCE13FAD2F3926970045937F /* FirebaseDatabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +32,7 @@
 			files = (
 				FCE13F3E2F38F7A60045937F /* FirebaseCore in Frameworks */,
 				FCE13F842F3909C40045937F /* FirebaseAuth in Frameworks */,
+				FCE13FAE2F3926970045937F /* FirebaseDatabase in Frameworks */,
 				FCE13F7A2F3908A80045937F /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -85,6 +87,7 @@
 				FCE13F3D2F38F7A60045937F /* FirebaseCore */,
 				FCE13F792F3908A80045937F /* FirebaseFirestore */,
 				FCE13F832F3909C40045937F /* FirebaseAuth */,
+				FCE13FAD2F3926970045937F /* FirebaseDatabase */,
 			);
 			productName = Proxy;
 			productReference = F01B602F2F35432B00E80160 /* Proxy.app */;
@@ -273,16 +276,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = test;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -307,16 +312,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = test;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -384,6 +391,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = FCE13F312F38F4160045937F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		FCE13FAD2F3926970045937F /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FCE13F312F38F4160045937F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
