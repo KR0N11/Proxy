@@ -14,7 +14,13 @@ struct AuthView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var username = ""
+    @State private var confirmPassword = ""
+    
+    @State private var showPassword = false
+    @State private var showConfirmPassword = false
 
+    
+    
     let brandOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
     let brandRedOrange = Color(red: 1.0, green: 0.3, blue: 0.1)
     
@@ -23,85 +29,145 @@ struct AuthView: View {
             LinearGradient(colors: [brandRedOrange, brandOrange], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
             
-            VStack(spacing: 25) {
-                Spacer()
-                
-                Image("dogIcon")
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 25) {
+                    
+                    Image("dogIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 80, height: 80)
                         .shadow(radius: 10)
-                
-                Text("PROXY")
-                    .font(.system(size: 48, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
-                    .shadow(radius: 5)
-                
-                VStack(spacing: 15) {
-                    if !isLogin {
-                        TextField("Username", text: $username)
+                        .padding(.top, 40)
+                    
+                    
+                    Text("PROXY")
+                        .font(.system(size: 48, weight: .heavy, design: .rounded))
+                        .foregroundColor(.white)
+                        .shadow(radius: 5)
+                    
+                    VStack(spacing: 15) {
+                        if !isLogin {
+                            TextField("Username", text: $username)
+                                .padding()
+                                .background(Color.white.opacity(0.9))
+                                .cornerRadius(10)
+                        }
+                        
+                        TextField("Email", text: $email)
                             .padding()
                             .background(Color.white.opacity(0.9))
                             .cornerRadius(10)
-                    }
-                    
-                    TextField("Email", text: $email)
-                        .padding()
-                        .background(Color.white.opacity(0.9))
-                        .cornerRadius(10)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                    
-                    SecureField("Password", text: $password)
-                        .padding()
-                        .background(Color.white.opacity(0.9))
-                        .cornerRadius(10)
-                }
-                .padding(.horizontal, 30)
-                
-                if viewModel.isLoading {
-                    ProgressView().tint(.white)
-                } else {
-                    Button(action: {
-                        Task {
-                            if isLogin {
-                                await viewModel.signIn(email: email, password: password)
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                        
+                        HStack {
+                            if showPassword {
+                                TextField("Password", text: $password)
                             } else {
-                                await viewModel.signUp(email: email, password: password, username: username)
+                                SecureField("Password", text: $password)
                             }
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showPassword.toggle()
+                                }
+                            } label: {
+                                Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                                    .foregroundColor(.gray)
+                                    .opacity(showPassword ? 0.50 : 1.0)
+                                    .scaleEffect(showPassword ? 1.1 : 1.0)
+                            }
+                            .animation(.easeInOut(duration: 0.2), value: showPassword)
+
                         }
-                    }) {
-                        Text(isLogin ? "LOG IN" : "SIGN UP")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(brandRedOrange)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(25)
-                            .padding(.horizontal, 30)
-                            .shadow(radius: 3)
-                    }
-                }
-                
-                Button(action: {
-                    withAnimation { isLogin.toggle() }
-                }) {
-                    Text(isLogin ? "New here? Create Account" : "Have an account? Log In")
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                }
-                
-                if !viewModel.errorMessage.isEmpty {
-                    Text(viewModel.errorMessage)
-                        .foregroundColor(.white)
-                        .font(.caption)
                         .padding()
-                        .background(Color.red.opacity(0.5))
-                        .cornerRadius(8)
+                        .background(Color.white.opacity(0.9))
+                        .cornerRadius(10)
+
+                        
+                        if !isLogin {
+                            HStack {
+                                if showConfirmPassword {
+                                    TextField("Confirm Password", text: $confirmPassword)
+                                } else {
+                                    SecureField("Confirm Password", text: $confirmPassword)
+                                }
+
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showConfirmPassword.toggle()
+                                    }
+                                } label: {
+                                    Image(systemName: showConfirmPassword ? "eye.slash.fill" : "eye.fill")
+                                        .foregroundColor(.gray)
+                                        .opacity(showConfirmPassword ? 0.50 : 1.0)
+                                        .scaleEffect(showConfirmPassword ? 1.1 : 1.0)
+                                }
+                                .animation(.easeInOut(duration: 0.2), value: showConfirmPassword)
+
+                            }
+                            .padding()
+                            .background(Color.white.opacity(0.9))
+                            .cornerRadius(10)
+                        }
+                        
+                    }
+                    .padding(.horizontal, 30)
+                    
+                    if viewModel.isLoading {
+                        ProgressView().tint(.white)
+                    } else {
+                        Button(action: {
+                            Task {
+                                if isLogin {
+                                    await viewModel.signIn(identifier: email, password: password)
+                                } else {
+                                    if password != confirmPassword {
+                                        viewModel.errorMessage = "Passwords do not match."
+                                        return
+                                    }
+                                    await viewModel.signUp(email: email, password: password, username: username)
+                                }
+                            }
+                            
+                        }) {
+                            Text(isLogin ? "LOG IN" : "SIGN UP")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(brandRedOrange)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.white)
+                                .cornerRadius(25)
+                                .padding(.horizontal, 30)
+                                .shadow(radius: 3)
+                        }
+                    }
+                    
+                    Button(action: {
+                        withAnimation {
+                            isLogin.toggle()
+                            showPassword = false
+                            showConfirmPassword = false
+                            confirmPassword = ""
+                        }
+
+                    }) {
+                        Text(isLogin ? "New here? Create Account" : "Have an account? Log In")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                    }
+                    
+                    if !viewModel.errorMessage.isEmpty {
+                        Text(viewModel.errorMessage)
+                            .foregroundColor(.white)
+                            .font(.caption)
+                            .padding()
+                            .background(Color.red.opacity(0.5))
+                            .cornerRadius(8)
+                    }
+                    
+                    Spacer(minLength: 30)
                 }
-                
-                Spacer()
             }
         }
     }
