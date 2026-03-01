@@ -68,9 +68,16 @@ struct MapView: View {
         }
     }
 
-    // Checkpoints near the user (shown on map)
+    // Checkpoints within 80 meters of the user
     var nearbyCheckpoints: [Checkpoint] {
-        viewModel.checkpoints
+        guard let userLoc = locationManager.userLocation else {
+            return viewModel.checkpoints
+        }
+        let myLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
+        return viewModel.checkpoints.filter { cp in
+            let cpLoc = CLLocation(latitude: cp.latitude, longitude: cp.longitude)
+            return cpLoc.distance(from: myLoc) <= 80
+        }
     }
 
     var body: some View {
@@ -204,9 +211,6 @@ struct MapView: View {
             locationManager.requestPermission()
             locationManager.startTracking()
             startSyncTimer()
-            Task {
-                await viewModel.fetchNearbyCheckpoints(latitude: region.center.latitude, longitude: region.center.longitude)
-            }
         }
         .onDisappear {
             syncTimer?.invalidate()
@@ -216,8 +220,9 @@ struct MapView: View {
             if let loc = newLoc, !hasInitiallyPanned {
                 region.center = loc
                 hasInitiallyPanned = true
-                // Search for nearby schools/parks once we have location
+                // Now that we have real location, fetch checkpoints and search for places
                 Task {
+                    await viewModel.fetchNearbyCheckpoints(latitude: loc.latitude, longitude: loc.longitude)
                     await searchAndSaveLocalPlaces()
                 }
             }
@@ -311,32 +316,29 @@ struct MapView: View {
         }
         let cpLoc = CLLocation(latitude: checkpoint.latitude, longitude: checkpoint.longitude)
         let myLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
-        let distanceFeet = cpLoc.distance(from: myLoc) * 3.28084 // meters to feet
+        let distanceMeters = cpLoc.distance(from: myLoc)
 
-        if distanceFeet <= 30 {
+        if distanceMeters <= 80 {
             selectedCheckpoint = checkpoint
             showCheckpointChat = true
         } else {
-            viewModel.errorMessage = "You need to be within 30 feet to interact! You are \(Int(distanceFeet)) ft away."
+            viewModel.errorMessage = "You need to be within 80 meters to interact! You are \(Int(distanceMeters))m away."
             showDistanceAlert = true
         }
     }
 
-    // Search for schools and parks using MapKit local search and save as checkpoints
+    // Search for schools and parks near the user and save them as checkpoints
     func searchAndSaveLocalPlaces() async {
         guard let userLoc = locationManager.userLocation else { return }
 
         // Only search if we have no checkpoints yet
         if !viewModel.checkpoints.isEmpty { return }
 
-        let types: [(query: String, type: String)] = [
-            ("school", "school"),
-            ("park", "park")
-        ]
+        let searchTypes = ["school", "park"]
 
-        for item in types {
+        for type in searchTypes {
             let request = MKLocalSearch.Request()
-            request.naturalLanguageQuery = item.query
+            request.naturalLanguageQuery = type
             request.region = MKCoordinateRegion(
                 center: userLoc,
                 span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -346,13 +348,13 @@ struct MapView: View {
                 let search = MKLocalSearch(request: request)
                 let response = try await search.start()
                 for mapItem in response.mapItems.prefix(5) {
-                    let name = mapItem.name ?? item.query.capitalized
+                    let name = mapItem.name ?? type.capitalized
                     let lat = mapItem.placemark.coordinate.latitude
                     let lon = mapItem.placemark.coordinate.longitude
-                    await viewModel.createCheckpoint(name: name, type: item.type, latitude: lat, longitude: lon)
+                    await viewModel.createCheckpoint(name: name, type: type, latitude: lat, longitude: lon)
                 }
             } catch {
-                print("Search error for \(item.query): \(error)")
+                print("Search error for \(type): \(error)")
             }
         }
 
