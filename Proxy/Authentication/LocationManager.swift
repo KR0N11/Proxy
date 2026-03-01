@@ -11,8 +11,21 @@ import CoreLocation
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
 
+    // LaSalle College: 2000 Rue Sainte-Catherine O, Montréal, QC H3H 2T2
+    static let defaultCoordinate = CLLocationCoordinate2D(latitude: 45.4916, longitude: -73.5818)
+
     @Published var userLocation: CLLocationCoordinate2D?
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published var ghostMode: Bool = false {
+        didSet {
+            if ghostMode {
+                manager.stopUpdatingLocation()
+                userLocation = LocationManager.defaultCoordinate
+            } else {
+                manager.startUpdatingLocation()
+            }
+        }
+    }
 
     override init() {
         super.init()
@@ -26,7 +39,9 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func startTracking() {
-        manager.startUpdatingLocation()
+        if !ghostMode {
+            manager.startUpdatingLocation()
+        }
     }
 
     func stopTracking() {
@@ -36,7 +51,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        guard !ghostMode, let location = locations.last else { return }
         DispatchQueue.main.async {
             self.userLocation = location.coordinate
         }
