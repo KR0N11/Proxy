@@ -14,7 +14,7 @@ struct MapView: View {
     @StateObject private var locationManager = LocationManager()
 
     @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673),
+        center: CLLocationCoordinate2D(latitude: 45.4883, longitude: -73.5837),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
 
@@ -68,16 +68,9 @@ struct MapView: View {
         }
     }
 
-    // Checkpoints within 80 meters of the user
+    // All checkpoints (shown on map, 80m check is only for interaction)
     var nearbyCheckpoints: [Checkpoint] {
-        guard let userLoc = locationManager.userLocation else {
-            return viewModel.checkpoints
-        }
-        let myLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
-        return viewModel.checkpoints.filter { cp in
-            let cpLoc = CLLocation(latitude: cp.latitude, longitude: cp.longitude)
-            return cpLoc.distance(from: myLoc) <= 80
-        }
+        viewModel.checkpoints
     }
 
     var body: some View {
@@ -115,11 +108,11 @@ struct MapView: View {
                             }
                         } label: {
                             VStack(spacing: 2) {
-                                Image(systemName: item.checkpointType == "school" ? "building.columns.fill" : "leaf.fill")
+                                Image(systemName: iconForCheckpoint(item.checkpointType))
                                     .font(.system(size: 20))
                                     .foregroundColor(.white)
                                     .frame(width: 40, height: 40)
-                                    .background(item.checkpointType == "school" ? Color.purple : Color.green)
+                                    .background(colorForCheckpoint(item.checkpointType))
                                     .clipShape(Circle())
                                     .shadow(radius: 3)
                                 Text(item.name)
@@ -135,6 +128,9 @@ struct MapView: View {
                     }
                 }
             }
+            .mapStyle(.standard(pointsOfInterest: .including([
+                .park, .nationalPark, .school, .university, .museum, .library, .stadium
+            ])))
             .edgesIgnoringSafeArea(.top)
 
             // Side buttons
@@ -311,6 +307,18 @@ struct MapView: View {
 
     // MARK: - Helpers
 
+    func iconForCheckpoint(_ type: String) -> String {
+        if type == "school" { return "building.columns.fill" }
+        if type == "landmark" { return "mappin.circle.fill" }
+        return "leaf.fill"
+    }
+
+    func colorForCheckpoint(_ type: String) -> Color {
+        if type == "school" { return .purple }
+        if type == "landmark" { return .orange }
+        return .green
+    }
+
     func centerOnUser() {
         if let loc = locationManager.userLocation {
             withAnimation {
@@ -368,7 +376,7 @@ struct MapView: View {
         // Only search if we have no checkpoints yet
         if !viewModel.checkpoints.isEmpty { return }
 
-        let searchTypes = ["school", "park"]
+        let searchTypes = ["school", "park", "landmark"]
 
         for type in searchTypes {
             let request = MKLocalSearch.Request()
