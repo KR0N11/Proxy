@@ -259,6 +259,12 @@ struct MapView: View {
             locationManager.requestPermission()
             locationManager.startTracking()
             startSyncTimer()
+            // Fetch checkpoints immediately (don't wait for GPS)
+            Task {
+                let center = locationManager.userLocation ?? LocationManager.defaultCoordinate
+                await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
+                await searchAndSaveLocalPlaces()
+            }
         }
         .onDisappear {
             syncTimer?.invalidate()
@@ -386,18 +392,19 @@ struct MapView: View {
 
     // Search for schools and parks near the user and save them as checkpoints
     func searchAndSaveLocalPlaces() async {
-        guard let userLoc = locationManager.userLocation else { return }
+        let center = locationManager.userLocation ?? LocationManager.defaultCoordinate
 
         // Only search if we have no checkpoints yet
         if !viewModel.checkpoints.isEmpty { return }
 
         let searchTypes = ["school", "park", "landmark"]
+        var createdAny = false
 
         for type in searchTypes {
             let request = MKLocalSearch.Request()
             request.naturalLanguageQuery = type
             request.region = MKCoordinateRegion(
-                center: userLoc,
+                center: center,
                 span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
             )
 
@@ -409,14 +416,48 @@ struct MapView: View {
                     let lat = mapItem.placemark.coordinate.latitude
                     let lon = mapItem.placemark.coordinate.longitude
                     await viewModel.createCheckpoint(name: name, type: type, latitude: lat, longitude: lon)
+                    createdAny = true
                 }
             } catch {
                 print("Search error for \(type): \(error)")
             }
         }
 
+        // If MapKit search returned nothing, seed hardcoded Montreal landmarks
+        if !createdAny {
+            await seedMontrealLandmarks()
+        }
+
         // Re-fetch after creating
-        await viewModel.fetchNearbyCheckpoints(latitude: userLoc.latitude, longitude: userLoc.longitude)
+        await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
+    }
+
+    // Hardcoded Montreal / LaSalle College area landmarks as fallback
+    func seedMontrealLandmarks() async {
+        let landmarks: [(name: String, type: String, lat: Double, lon: Double)] = [
+            // Schools
+            ("LaSalle College", "school", 45.4916, -73.5818),
+            ("Dawson College", "school", 45.4890, -73.5785),
+            ("Concordia University (SGW)", "school", 45.4953, -73.5788),
+            ("McGill University", "school", 45.5048, -73.5772),
+            ("ETS - École de technologie supérieure", "school", 45.4945, -73.5627),
+            // Parks
+            ("Parc du Mont-Royal", "park", 45.5048, -73.5874),
+            ("Square Dorchester", "park", 45.4988, -73.5726),
+            ("Parc Émilie-Gamelin", "park", 45.5162, -73.5610),
+            ("Place des Arts", "park", 45.5081, -73.5668),
+            ("Jardin de Chine", "park", 45.5596, -73.5507),
+            // Landmarks
+            ("Centre Bell", "landmark", 45.4960, -73.5693),
+            ("Basilique Notre-Dame", "landmark", 45.5046, -73.5566),
+            ("Oratoire Saint-Joseph", "landmark", 45.4920, -73.6170),
+            ("Tour de Montréal (Stade olympique)", "landmark", 45.5579, -73.5515),
+            ("Vieux-Port de Montréal", "landmark", 45.5075, -73.5530),
+        ]
+
+        for lm in landmarks {
+            await viewModel.createCheckpoint(name: lm.name, type: lm.type, latitude: lm.lat, longitude: lm.lon)
+        }
     }
 }
 
