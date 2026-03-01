@@ -21,12 +21,18 @@ class AppViewModel: ObservableObject {
     @Published var allUsers: [AppUser] = []
     @Published var chatMessages: [Message] = []
 
+    // Map & Location
+    @Published var checkpoints: [Checkpoint] = []
+    @Published var checkpointMessages: [CheckpointMessage] = []
+    @Published var leaderboard: [AppUser] = []
+
     @Published var isLoading = false
     @Published var errorMessage = ""
 
     // NOTE: must NOT be private anymore (separate files need access)
     var db = Firestore.firestore()
     var userListener: ListenerRegistration?
+    var checkpointChatListener: ListenerRegistration?
     let viewContext = PersistenceController.shared.container.viewContext
 
     init() {
