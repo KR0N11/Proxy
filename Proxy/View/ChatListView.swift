@@ -11,7 +11,7 @@ import SwiftUI
 struct ChatListView: View {
     @EnvironmentObject var viewModel: AppViewModel
     @State private var showAddSheet = false
-    @State private var targetID = ""
+    @State private var targetEmail = ""
     
     let brandOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
     
@@ -26,11 +26,12 @@ struct ChatListView: View {
                                 Image(systemName: "person.circle.fill")
                                     .foregroundColor(.gray)
                                 VStack(alignment: .leading) {
-                                    Text("User ID:")
-                                        .font(.caption)
-                                    Text(requesterID)
+                                    Text(getUsername(for: requesterID))
                                         .font(.subheadline)
                                         .bold()
+                                    Text("Wants to be your friend")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                 }
                                 Spacer()
                                 Button("Accept") {
@@ -92,19 +93,21 @@ struct ChatListView: View {
                         .font(.title2)
                         .bold()
                     
-                    Text("Enter the User ID (Document ID) of your friend:")
+                    Text("Enter the email of your friend:")
                         .font(.caption)
                         .foregroundColor(.gray)
-                    
-                    TextField("User ID", text: $targetID)
+
+                    TextField("Email", text: $targetEmail)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .autocapitalization(.none)
+                        .keyboardType(.emailAddress)
                         .padding()
-                    
+
                     Button {
                         Task {
-                            await viewModel.sendFriendRequest(to: targetID)
+                            await viewModel.sendFriendRequest(to: targetEmail)
                             showAddSheet = false
-                            targetID = ""
+                            targetEmail = ""
                         }
                     } label: {
                         Text("Send Request")
@@ -120,5 +123,15 @@ struct ChatListView: View {
                 .presentationDetents([.medium])
             }
         }
+    }
+
+    private func getUsername(for id: String) -> String {
+        if let user = viewModel.allUsers.first(where: { $0.id == id }) {
+            return user.username
+        }
+        if let friend = viewModel.friends.first(where: { $0.id == id }) {
+            return friend.username
+        }
+        return "User (\(id.prefix(5)))"
     }
 }
