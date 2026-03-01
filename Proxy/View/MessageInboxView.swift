@@ -26,7 +26,7 @@ struct MessagesInboxView: View {
         }
         .navigationTitle("Messages")
         .refreshable {
-            await viewModel.fetchCurrentUser()
+            viewModel.fetchCurrentUser()
         }
     }
     

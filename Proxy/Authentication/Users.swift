@@ -6,7 +6,7 @@
 //
 
 import FirebaseAuth
-import FirebaseFirestore
+@preconcurrency import FirebaseFirestore
 
 extension AppViewModel {
 

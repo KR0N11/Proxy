@@ -5,7 +5,7 @@
 //  Firebase location sync + checkpoint + points logic.
 //
 
-import FirebaseFirestore
+@preconcurrency import FirebaseFirestore
 import CoreLocation
 
 extension AppViewModel {
