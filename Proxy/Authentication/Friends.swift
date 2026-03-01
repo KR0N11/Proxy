@@ -5,7 +5,7 @@
 //  Created by Kevin Alinazar on 2026-02-08.
 //
 
-import FirebaseFirestore
+@preconcurrency import FirebaseFirestore
 
 extension AppViewModel {
 
