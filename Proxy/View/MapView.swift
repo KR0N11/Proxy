@@ -140,6 +140,40 @@ struct MapView: View {
             // Side buttons
             VStack {
                 HStack {
+                    // Zoom buttons (top left)
+                    VStack(spacing: 8) {
+                        Button {
+                            withAnimation {
+                                region.span.latitudeDelta /= 2
+                                region.span.longitudeDelta /= 2
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.black.opacity(0.6))
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+
+                        Button {
+                            withAnimation {
+                                region.span.latitudeDelta *= 2
+                                region.span.longitudeDelta *= 2
+                            }
+                        } label: {
+                            Image(systemName: "minus")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.black.opacity(0.6))
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                    }
+                    .padding(.leading, 12)
+
                     Spacer()
                     VStack(spacing: 12) {
                         // Friend picker button
