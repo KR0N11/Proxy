@@ -28,9 +28,7 @@ struct ContentView: View {
             .tag(0)
             
             // Tab 2: Map (Your existing map)
-            NavigationView {
-                MapView() // Make sure you have a MapView struct, or replace with Text("Map")
-            }
+            MapView()
             .tabItem {
                 Image(systemName: "map.fill")
                 Text("Map")
