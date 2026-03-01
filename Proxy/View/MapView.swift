@@ -14,7 +14,7 @@ struct MapView: View {
     @StateObject private var locationManager = LocationManager()
 
     @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 45.4637, longitude: -73.6322),
+        center: CLLocationCoordinate2D(latitude: 45.4916, longitude: -73.5818),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
 
@@ -76,7 +76,7 @@ struct MapView: View {
     var body: some View {
         ZStack {
             Map(coordinateRegion: $region,
-                showsUserLocation: true,
+                showsUserLocation: !locationManager.ghostMode,
                 annotationItems: mapAnnotations) { item in
                 MapAnnotation(coordinate: item.coordinate) {
                     if item.isFriend {
@@ -194,6 +194,24 @@ struct MapView: View {
                                 .foregroundColor(.white)
                                 .frame(width: 44, height: 44)
                                 .background(Color.blue)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+
+                        // Ghost mode button
+                        Button {
+                            locationManager.ghostMode.toggle()
+                            if locationManager.ghostMode {
+                                withAnimation {
+                                    region.center = LocationManager.defaultCoordinate
+                                }
+                            }
+                        } label: {
+                            Image(systemName: locationManager.ghostMode ? "eye.slash.fill" : "eye.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(locationManager.ghostMode ? Color.gray : Color.green)
                                 .clipShape(Circle())
                                 .shadow(radius: 4)
                         }
@@ -320,10 +338,9 @@ struct MapView: View {
     }
 
     func centerOnUser() {
-        if let loc = locationManager.userLocation {
-            withAnimation {
-                region.center = loc
-            }
+        let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
+        withAnimation {
+            region.center = loc
         }
     }
 
@@ -331,10 +348,9 @@ struct MapView: View {
         syncTimer?.invalidate()
         syncTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
             Task { @MainActor in
-                // Upload my location
-                if let loc = locationManager.userLocation {
-                    await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
-                }
+                // Upload my location (ghost mode sends LaSalle College coords)
+                let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
+                await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
                 // Refresh friend locations
                 await viewModel.refreshFriendsLocations()
                 // Refresh checkpoints
@@ -343,9 +359,8 @@ struct MapView: View {
         }
         // Also do an immediate sync
         Task {
-            if let loc = locationManager.userLocation {
-                await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
-            }
+            let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
+            await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
             await viewModel.refreshFriendsLocations()
         }
     }
