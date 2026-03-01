@@ -26,9 +26,9 @@ struct CheckpointChatView: View {
             VStack(spacing: 0) {
                 // Checkpoint header
                 VStack(spacing: 6) {
-                    Image(systemName: checkpoint.type == "school" ? "building.columns.fill" : "leaf.fill")
+                    Image(systemName: checkpoint.type == "school" ? "building.columns.fill" : checkpoint.type == "landmark" ? "mappin.circle.fill" : "leaf.fill")
                         .font(.system(size: 28))
-                        .foregroundColor(checkpoint.type == "school" ? .purple : .green)
+                        .foregroundColor(checkpoint.type == "school" ? .purple : checkpoint.type == "landmark" ? .orange : .green)
 
                     Text(checkpoint.name)
                         .font(.headline)
