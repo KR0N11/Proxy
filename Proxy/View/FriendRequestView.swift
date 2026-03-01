@@ -20,12 +20,11 @@ struct FriendRequestView: View {
                             .foregroundColor(.gray)
                         
                         VStack(alignment: .leading) {
-                            
                             Text(getUsername(for: requesterID))
                                 .font(.headline)
-                            Text(requesterID)
-                                .font(.system(.subheadline, design: .monospaced))
-                                .lineLimit(1)
+                            Text("Wants to be your friend")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                         
                         Spacer()
