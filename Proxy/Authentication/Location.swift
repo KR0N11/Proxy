@@ -56,6 +56,17 @@ extension AppViewModel {
     }
 
     func createCheckpoint(name: String, type: String, latitude: Double, longitude: Double) async {
+        // Deterministic ID from name so seeding is idempotent
+        let docID = name.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "(", with: "")
+            .replacingOccurrences(of: ")", with: "")
+            .replacingOccurrences(of: "'", with: "")
+            .replacingOccurrences(of: "é", with: "e")
+            .replacingOccurrences(of: "è", with: "e")
+            .replacingOccurrences(of: "ê", with: "e")
+            .replacingOccurrences(of: "à", with: "a")
+            .replacingOccurrences(of: "ô", with: "o")
         let data: [String: Any] = [
             "name": name,
             "type": type,
@@ -64,7 +75,7 @@ extension AppViewModel {
             "createdAt": FieldValue.serverTimestamp()
         ]
         do {
-            try await db.collection("checkpoints").addDocument(data: data)
+            try await db.collection("checkpoints").document(docID).setData(data, merge: true)
         } catch {
             print("Error creating checkpoint: \(error)")
         }
