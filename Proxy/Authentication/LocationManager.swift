@@ -16,13 +16,16 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     @Published var userLocation: CLLocationCoordinate2D?
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
-    @Published var ghostMode: Bool = false {
+
+    // Location is OFF by default — starts at Montreal LaSalle College
+    @Published var ghostMode: Bool = true {
         didSet {
             if ghostMode {
                 manager.stopUpdatingLocation()
                 userLocation = LocationManager.defaultCoordinate
             } else {
-                manager.startUpdatingLocation()
+                // Only request permission when user actively turns on location
+                requestPermissionAndStart()
             }
         }
     }
@@ -31,7 +34,18 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 10 // update when moved 10 meters
+        manager.distanceFilter = 10
+        // Start in ghost mode — default to LaSalle College
+        userLocation = LocationManager.defaultCoordinate
+    }
+
+    func requestPermissionAndStart() {
+        let status = manager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.startUpdatingLocation()
+        } else {
+            manager.requestWhenInUseAuthorization()
+        }
     }
 
     func requestPermission() {
@@ -61,9 +75,12 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         DispatchQueue.main.async {
             self.authorizationStatus = manager.authorizationStatus
         }
-        if manager.authorizationStatus == .authorizedWhenInUse ||
-           manager.authorizationStatus == .authorizedAlways {
-            manager.startUpdatingLocation()
+        // Only start tracking if user has turned off ghost mode
+        if !ghostMode {
+            if manager.authorizationStatus == .authorizedWhenInUse ||
+               manager.authorizationStatus == .authorizedAlways {
+                manager.startUpdatingLocation()
+            }
         }
     }
 
