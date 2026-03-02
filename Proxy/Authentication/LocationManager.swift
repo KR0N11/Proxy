@@ -17,15 +17,14 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var userLocation: CLLocationCoordinate2D?
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
-    // Location is OFF by default — starts at Montreal LaSalle College
-    @Published var ghostMode: Bool = true {
+    // Location is completely OFF by default — always Montreal
+    @Published var useCurrentLocation: Bool = false {
         didSet {
-            if ghostMode {
+            if useCurrentLocation {
+                requestPermissionAndStart()
+            } else {
                 manager.stopUpdatingLocation()
                 userLocation = LocationManager.defaultCoordinate
-            } else {
-                // Only request permission when user actively turns on location
-                requestPermissionAndStart()
             }
         }
     }
@@ -35,11 +34,11 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = 10
-        // Start in ghost mode — default to LaSalle College
+        // Always start at Montreal LaSalle College
         userLocation = LocationManager.defaultCoordinate
     }
 
-    func requestPermissionAndStart() {
+    private func requestPermissionAndStart() {
         let status = manager.authorizationStatus
         if status == .authorizedWhenInUse || status == .authorizedAlways {
             manager.startUpdatingLocation()
@@ -48,24 +47,10 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
 
-    func requestPermission() {
-        manager.requestWhenInUseAuthorization()
-    }
-
-    func startTracking() {
-        if !ghostMode {
-            manager.startUpdatingLocation()
-        }
-    }
-
-    func stopTracking() {
-        manager.stopUpdatingLocation()
-    }
-
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard !ghostMode, let location = locations.last else { return }
+        guard useCurrentLocation, let location = locations.last else { return }
         DispatchQueue.main.async {
             self.userLocation = location.coordinate
         }
@@ -75,8 +60,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         DispatchQueue.main.async {
             self.authorizationStatus = manager.authorizationStatus
         }
-        // Only start tracking if user has turned off ghost mode
-        if !ghostMode {
+        if useCurrentLocation {
             if manager.authorizationStatus == .authorizedWhenInUse ||
                manager.authorizationStatus == .authorizedAlways {
                 manager.startUpdatingLocation()
