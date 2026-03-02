@@ -198,16 +198,20 @@ struct MapView: View {
                                 .shadow(radius: 4)
                         }
 
-                        // Ghost mode button
+                        // Location toggle button (off by default)
                         Button {
                             locationManager.ghostMode.toggle()
                             if locationManager.ghostMode {
+                                // Switched to ghost mode — back to Montreal
                                 withAnimation {
                                     region.center = LocationManager.defaultCoordinate
                                 }
+                            } else {
+                                // User turned on real location — will request permission
+                                hasInitiallyPanned = false
                             }
                         } label: {
-                            Image(systemName: locationManager.ghostMode ? "eye.slash.fill" : "eye.fill")
+                            Image(systemName: locationManager.ghostMode ? "location.slash.fill" : "location.fill")
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(.white)
                                 .frame(width: 44, height: 44)
@@ -256,10 +260,10 @@ struct MapView: View {
             }
         }
         .onAppear {
-            locationManager.requestPermission()
-            locationManager.startTracking()
+            // Do NOT request permission or start tracking on appear
+            // Location is off by default (ghost mode = on)
             startSyncTimer()
-            // Fetch checkpoints immediately (don't wait for GPS)
+            // Fetch checkpoints immediately using Montreal default
             Task {
                 let center = locationManager.userLocation ?? LocationManager.defaultCoordinate
                 await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
@@ -432,27 +436,61 @@ struct MapView: View {
         await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
     }
 
-    // Hardcoded Montreal / LaSalle College area landmarks as fallback
+    // Hardcoded Montreal landmarks — always seeded as fallback
     func seedMontrealLandmarks() async {
         let landmarks: [(name: String, type: String, lat: Double, lon: Double)] = [
-            // Schools
+            // === Schools & Colleges ===
             ("LaSalle College", "school", 45.4916, -73.5818),
             ("Dawson College", "school", 45.4890, -73.5785),
             ("Concordia University (SGW)", "school", 45.4953, -73.5788),
+            ("Concordia University (Loyola)", "school", 45.4584, -73.6401),
             ("McGill University", "school", 45.5048, -73.5772),
-            ("ETS - École de technologie supérieure", "school", 45.4945, -73.5627),
-            // Parks
+            ("ETS", "school", 45.4945, -73.5627),
+            ("UQAM", "school", 45.5095, -73.5685),
+            ("Université de Montréal", "school", 45.5017, -73.6153),
+            ("Polytechnique Montréal", "school", 45.5046, -73.6130),
+            ("HEC Montréal", "school", 45.5013, -73.6192),
+            ("Collège de Maisonneuve", "school", 45.5535, -73.5490),
+            ("Vanier College", "school", 45.4672, -73.6286),
+            ("Collège Jean-de-Brébeuf", "school", 45.5015, -73.6232),
+            ("Marianopolis College", "school", 45.4862, -73.5843),
+
+            // === Parks ===
             ("Parc du Mont-Royal", "park", 45.5048, -73.5874),
             ("Square Dorchester", "park", 45.4988, -73.5726),
             ("Parc Émilie-Gamelin", "park", 45.5162, -73.5610),
             ("Place des Arts", "park", 45.5081, -73.5668),
-            ("Jardin de Chine", "park", 45.5596, -73.5507),
-            // Landmarks
+            ("Jardin botanique de Montréal", "park", 45.5596, -73.5507),
+            ("Parc La Fontaine", "park", 45.5268, -73.5696),
+            ("Parc Jean-Drapeau", "park", 45.5134, -73.5340),
+            ("Parc Jarry", "park", 45.5339, -73.6271),
+            ("Parc Maisonneuve", "park", 45.5551, -73.5525),
+            ("Parc Angrignon", "park", 45.4467, -73.6042),
+            ("Square Saint-Louis", "park", 45.5165, -73.5669),
+            ("Parc Jeanne-Mance", "park", 45.5110, -73.5815),
+            ("Westmount Park", "park", 45.4843, -73.5955),
+
+            // === Landmarks & Culture ===
             ("Centre Bell", "landmark", 45.4960, -73.5693),
             ("Basilique Notre-Dame", "landmark", 45.5046, -73.5566),
             ("Oratoire Saint-Joseph", "landmark", 45.4920, -73.6170),
-            ("Tour de Montréal (Stade olympique)", "landmark", 45.5579, -73.5515),
+            ("Stade olympique", "landmark", 45.5579, -73.5515),
             ("Vieux-Port de Montréal", "landmark", 45.5075, -73.5530),
+            ("Marché Atwater", "landmark", 45.4810, -73.5768),
+            ("Marché Jean-Talon", "landmark", 45.5362, -73.6154),
+            ("Musée des beaux-arts", "landmark", 45.4985, -73.5796),
+            ("Musée McCord", "landmark", 45.5033, -73.5742),
+            ("Gare Centrale", "landmark", 45.4998, -73.5670),
+            ("Cathédrale Marie-Reine-du-Monde", "landmark", 45.4993, -73.5680),
+            ("Habitat 67", "landmark", 45.4978, -73.5432),
+            ("Biosphère", "landmark", 45.5145, -73.5312),
+            ("Tour de l'Horloge", "landmark", 45.5048, -73.5451),
+            ("Place Ville Marie", "landmark", 45.5014, -73.5693),
+            ("Complexe Desjardins", "landmark", 45.5082, -73.5632),
+            ("Palais des congrès", "landmark", 45.5047, -73.5612),
+            ("Quartier des spectacles", "landmark", 45.5088, -73.5668),
+            ("Canal de Lachine", "landmark", 45.4820, -73.5705),
+            ("Chinatown Gate", "landmark", 45.5072, -73.5602),
         ]
 
         for lm in landmarks {
