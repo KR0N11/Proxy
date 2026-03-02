@@ -13,6 +13,9 @@ struct MapView: View {
     @EnvironmentObject var viewModel: AppViewModel
     @StateObject private var locationManager = LocationManager()
 
+    // Always centered on LaSalle College
+    static let lasalle = CLLocationCoordinate2D(latitude: 45.4916, longitude: -73.5818)
+
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 45.4916, longitude: -73.5818),
         span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
@@ -62,9 +65,9 @@ struct MapView: View {
         viewModel.friends.filter { friend in
             guard friendVisibility[friend.id] ?? true else { return false }
             guard friend.latitude != 0 || friend.longitude != 0 else { return false }
-            if let maxDist = selectedDistance.meters, let userLoc = locationManager.userLocation {
+            if let maxDist = selectedDistance.meters {
                 let friendLoc = CLLocation(latitude: friend.latitude, longitude: friend.longitude)
-                let myLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
+                let myLoc = CLLocation(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
                 return friendLoc.distance(from: myLoc) <= maxDist
             }
             return true
@@ -78,10 +81,36 @@ struct MapView: View {
     var body: some View {
         ZStack {
             Map(coordinateRegion: $region,
-                showsUserLocation: locationManager.useCurrentLocation,
+                showsUserLocation: false,
                 annotationItems: mapAnnotations) { item in
                 MapAnnotation(coordinate: item.coordinate) {
-                    if item.isFriend {
+                    if item.isMe {
+                        // Current user — orange pulsing dot
+                        VStack(spacing: 2) {
+                            ZStack {
+                                Circle()
+                                    .fill(brandOrange.opacity(0.25))
+                                    .frame(width: 48, height: 48)
+                                Circle()
+                                    .fill(brandOrange)
+                                    .frame(width: 32, height: 32)
+                                    .overlay(
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                    )
+                                    .shadow(color: brandOrange.opacity(0.5), radius: 6)
+                            }
+                            Text("You")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(brandOrange)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.white.opacity(0.95))
+                                .cornerRadius(6)
+                                .shadow(radius: 1)
+                        }
+                    } else if item.isFriend {
                         VStack(spacing: 2) {
                             Circle()
                                 .fill(Color.blue)
@@ -133,21 +162,21 @@ struct MapView: View {
             ])))
             .edgesIgnoringSafeArea(.top)
 
-            // Side buttons
+            // Overlay buttons
             VStack {
                 HStack {
-                    // Zoom buttons (top left)
+                    // Zoom buttons (top left) — ORANGE
                     VStack(spacing: 8) {
-                        glassButton(icon: "plus") {
+                        glassButton(icon: "plus", tint: brandOrange) {
                             withAnimation {
-                                region.span.latitudeDelta /= 2
-                                region.span.longitudeDelta /= 2
+                                region.span.latitudeDelta = max(region.span.latitudeDelta / 2, 0.001)
+                                region.span.longitudeDelta = max(region.span.longitudeDelta / 2, 0.001)
                             }
                         }
-                        glassButton(icon: "minus") {
+                        glassButton(icon: "minus", tint: brandOrange) {
                             withAnimation {
-                                region.span.latitudeDelta *= 2
-                                region.span.longitudeDelta *= 2
+                                region.span.latitudeDelta = min(region.span.latitudeDelta * 2, 1.0)
+                                region.span.longitudeDelta = min(region.span.longitudeDelta * 2, 1.0)
                             }
                         }
                     }
@@ -161,21 +190,11 @@ struct MapView: View {
                             showFriendPicker = true
                         }
 
-                        // Center on Montreal
+                        // Center on LaSalle
                         glassButton(icon: "mappin.and.ellipse", tint: brandOrange) {
-                            centerOnDefault()
-                        }
-
-                        // Use current location toggle
-                        glassButton(
-                            icon: locationManager.useCurrentLocation ? "location.fill" : "location.slash.fill",
-                            tint: locationManager.useCurrentLocation ? .green : Color.white.opacity(0.5)
-                        ) {
-                            locationManager.useCurrentLocation.toggle()
-                            if !locationManager.useCurrentLocation {
-                                withAnimation {
-                                    region.center = LocationManager.defaultCoordinate
-                                }
+                            withAnimation {
+                                region.center = MapView.lasalle
+                                region.span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
                             }
                         }
 
@@ -196,6 +215,7 @@ struct MapView: View {
                         Button {
                             selectedDistance = filter
                             withAnimation {
+                                region.center = MapView.lasalle
                                 region.span = MKCoordinateSpan(
                                     latitudeDelta: filter.zoomDelta,
                                     longitudeDelta: filter.zoomDelta
@@ -235,8 +255,7 @@ struct MapView: View {
         .onAppear {
             startSyncTimer()
             Task {
-                let center = LocationManager.defaultCoordinate
-                await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
+                await viewModel.fetchNearbyCheckpoints(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
                 await searchAndSaveLocalPlaces()
             }
         }
@@ -288,12 +307,25 @@ struct MapView: View {
 
     var mapAnnotations: [MapItem] {
         var items: [MapItem] = []
+
+        // "Me" pin at LaSalle
+        let myName = viewModel.currentUser?.username ?? "You"
+        items.append(MapItem(
+            id: "me_\(viewModel.currentUser?.id ?? "self")",
+            name: myName,
+            coordinate: MapView.lasalle,
+            isFriend: false,
+            isMe: true,
+            checkpointType: ""
+        ))
+
         for friend in visibleFriends {
             items.append(MapItem(
                 id: friend.id,
                 name: friend.username,
                 coordinate: CLLocationCoordinate2D(latitude: friend.latitude, longitude: friend.longitude),
                 isFriend: true,
+                isMe: false,
                 checkpointType: ""
             ))
         }
@@ -303,6 +335,7 @@ struct MapView: View {
                 name: cp.name,
                 coordinate: CLLocationCoordinate2D(latitude: cp.latitude, longitude: cp.longitude),
                 isFriend: false,
+                isMe: false,
                 checkpointType: cp.type
             ))
         }
@@ -323,33 +356,24 @@ struct MapView: View {
         return .green
     }
 
-    func centerOnDefault() {
-        withAnimation {
-            region.center = LocationManager.defaultCoordinate
-        }
-    }
-
     func startSyncTimer() {
         syncTimer?.invalidate()
         syncTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
             Task { @MainActor in
-                let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
-                await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
+                await viewModel.updateMyLocation(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
                 await viewModel.refreshFriendsLocations()
-                await viewModel.fetchNearbyCheckpoints(latitude: region.center.latitude, longitude: region.center.longitude)
+                await viewModel.fetchNearbyCheckpoints(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
             }
         }
         Task {
-            let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
-            await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
+            await viewModel.updateMyLocation(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
             await viewModel.refreshFriendsLocations()
         }
     }
 
     func checkCheckpointProximity(_ checkpoint: Checkpoint) {
-        let userLoc = locationManager.userLocation ?? LocationManager.defaultCoordinate
         let cpLoc = CLLocation(latitude: checkpoint.latitude, longitude: checkpoint.longitude)
-        let myLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
+        let myLoc = CLLocation(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
         let distanceMeters = cpLoc.distance(from: myLoc)
 
         if distanceMeters <= 80 {
@@ -365,17 +389,12 @@ struct MapView: View {
 
     func searchAndSaveLocalPlaces() async {
         if !viewModel.checkpoints.isEmpty { return }
-
-        // Always seed Montreal landmarks — don't rely on MapKit search
         await seedMontrealLandmarks()
-
-        let center = LocationManager.defaultCoordinate
-        await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
+        await viewModel.fetchNearbyCheckpoints(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
     }
 
     func seedMontrealLandmarks() async {
         let landmarks: [(name: String, type: String, lat: Double, lon: Double)] = [
-            // === Schools & Colleges ===
             ("LaSalle College", "school", 45.4916, -73.5818),
             ("Dawson College", "school", 45.4890, -73.5785),
             ("Concordia University (SGW)", "school", 45.4953, -73.5788),
@@ -390,8 +409,6 @@ struct MapView: View {
             ("Vanier College", "school", 45.4672, -73.6286),
             ("Collège Jean-de-Brébeuf", "school", 45.5015, -73.6232),
             ("Marianopolis College", "school", 45.4862, -73.5843),
-
-            // === Parks ===
             ("Parc du Mont-Royal", "park", 45.5048, -73.5874),
             ("Square Dorchester", "park", 45.4988, -73.5726),
             ("Parc Émilie-Gamelin", "park", 45.5162, -73.5610),
@@ -405,8 +422,6 @@ struct MapView: View {
             ("Square Saint-Louis", "park", 45.5165, -73.5669),
             ("Parc Jeanne-Mance", "park", 45.5110, -73.5815),
             ("Westmount Park", "park", 45.4843, -73.5955),
-
-            // === Landmarks & Culture ===
             ("Centre Bell", "landmark", 45.4960, -73.5693),
             ("Basilique Notre-Dame", "landmark", 45.5046, -73.5566),
             ("Oratoire Saint-Joseph", "landmark", 45.4920, -73.6170),
@@ -442,6 +457,7 @@ struct MapItem: Identifiable {
     let name: String
     let coordinate: CLLocationCoordinate2D
     let isFriend: Bool
+    let isMe: Bool
     let checkpointType: String
 }
 
