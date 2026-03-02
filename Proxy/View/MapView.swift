@@ -9,11 +9,94 @@ import SwiftUI
 import MapKit
 import CoreLocation
 
+// MARK: - Local landmark data (always visible, no Firestore dependency)
+
+struct LocalLandmark: Identifiable {
+    let id: String
+    let name: String
+    let type: String
+    let latitude: Double
+    let longitude: Double
+
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    /// Deterministic Firestore doc ID (must match Location.swift logic)
+    var firestoreID: String {
+        name.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "(", with: "")
+            .replacingOccurrences(of: ")", with: "")
+            .replacingOccurrences(of: "'", with: "")
+            .replacingOccurrences(of: "é", with: "e")
+            .replacingOccurrences(of: "è", with: "e")
+            .replacingOccurrences(of: "ê", with: "e")
+            .replacingOccurrences(of: "à", with: "a")
+            .replacingOccurrences(of: "ô", with: "o")
+    }
+
+    static let allLandmarks: [LocalLandmark] = [
+        // === Schools & Colleges ===
+        LocalLandmark(id: "lasalle-college", name: "LaSalle College", type: "school", latitude: 45.4916, longitude: -73.5818),
+        LocalLandmark(id: "dawson-college", name: "Dawson College", type: "school", latitude: 45.4890, longitude: -73.5785),
+        LocalLandmark(id: "concordia-sgw", name: "Concordia University (SGW)", type: "school", latitude: 45.4953, longitude: -73.5788),
+        LocalLandmark(id: "concordia-loyola", name: "Concordia University (Loyola)", type: "school", latitude: 45.4584, longitude: -73.6401),
+        LocalLandmark(id: "mcgill", name: "McGill University", type: "school", latitude: 45.5048, longitude: -73.5772),
+        LocalLandmark(id: "ets", name: "ETS", type: "school", latitude: 45.4945, longitude: -73.5627),
+        LocalLandmark(id: "uqam", name: "UQAM", type: "school", latitude: 45.5095, longitude: -73.5685),
+        LocalLandmark(id: "udem", name: "Université de Montréal", type: "school", latitude: 45.5017, longitude: -73.6153),
+        LocalLandmark(id: "polytechnique", name: "Polytechnique Montréal", type: "school", latitude: 45.5046, longitude: -73.6130),
+        LocalLandmark(id: "hec", name: "HEC Montréal", type: "school", latitude: 45.5013, longitude: -73.6192),
+        LocalLandmark(id: "maisonneuve", name: "Collège de Maisonneuve", type: "school", latitude: 45.5535, longitude: -73.5490),
+        LocalLandmark(id: "vanier", name: "Vanier College", type: "school", latitude: 45.4672, longitude: -73.6286),
+        LocalLandmark(id: "brebeuf", name: "Collège Jean-de-Brébeuf", type: "school", latitude: 45.5015, longitude: -73.6232),
+        LocalLandmark(id: "marianopolis", name: "Marianopolis College", type: "school", latitude: 45.4862, longitude: -73.5843),
+
+        // === Parks ===
+        LocalLandmark(id: "mont-royal", name: "Parc du Mont-Royal", type: "park", latitude: 45.5048, longitude: -73.5874),
+        LocalLandmark(id: "dorchester", name: "Square Dorchester", type: "park", latitude: 45.4988, longitude: -73.5726),
+        LocalLandmark(id: "gamelin", name: "Parc Émilie-Gamelin", type: "park", latitude: 45.5162, longitude: -73.5610),
+        LocalLandmark(id: "place-des-arts", name: "Place des Arts", type: "park", latitude: 45.5081, longitude: -73.5668),
+        LocalLandmark(id: "jardin-botanique", name: "Jardin botanique de Montréal", type: "park", latitude: 45.5596, longitude: -73.5507),
+        LocalLandmark(id: "la-fontaine", name: "Parc La Fontaine", type: "park", latitude: 45.5268, longitude: -73.5696),
+        LocalLandmark(id: "jean-drapeau", name: "Parc Jean-Drapeau", type: "park", latitude: 45.5134, longitude: -73.5340),
+        LocalLandmark(id: "jarry", name: "Parc Jarry", type: "park", latitude: 45.5339, longitude: -73.6271),
+        LocalLandmark(id: "parc-maisonneuve", name: "Parc Maisonneuve", type: "park", latitude: 45.5551, longitude: -73.5525),
+        LocalLandmark(id: "angrignon", name: "Parc Angrignon", type: "park", latitude: 45.4467, longitude: -73.6042),
+        LocalLandmark(id: "saint-louis", name: "Square Saint-Louis", type: "park", latitude: 45.5165, longitude: -73.5669),
+        LocalLandmark(id: "jeanne-mance", name: "Parc Jeanne-Mance", type: "park", latitude: 45.5110, longitude: -73.5815),
+        LocalLandmark(id: "westmount-park", name: "Westmount Park", type: "park", latitude: 45.4843, longitude: -73.5955),
+
+        // === Landmarks & Culture ===
+        LocalLandmark(id: "centre-bell", name: "Centre Bell", type: "landmark", latitude: 45.4960, longitude: -73.5693),
+        LocalLandmark(id: "notre-dame", name: "Basilique Notre-Dame", type: "landmark", latitude: 45.5046, longitude: -73.5566),
+        LocalLandmark(id: "oratoire", name: "Oratoire Saint-Joseph", type: "landmark", latitude: 45.4920, longitude: -73.6170),
+        LocalLandmark(id: "stade-olympique", name: "Stade olympique", type: "landmark", latitude: 45.5579, longitude: -73.5515),
+        LocalLandmark(id: "vieux-port", name: "Vieux-Port de Montréal", type: "landmark", latitude: 45.5075, longitude: -73.5530),
+        LocalLandmark(id: "marche-atwater", name: "Marché Atwater", type: "landmark", latitude: 45.4810, longitude: -73.5768),
+        LocalLandmark(id: "jean-talon", name: "Marché Jean-Talon", type: "landmark", latitude: 45.5362, longitude: -73.6154),
+        LocalLandmark(id: "musee-beaux-arts", name: "Musée des beaux-arts", type: "landmark", latitude: 45.4985, longitude: -73.5796),
+        LocalLandmark(id: "musee-mccord", name: "Musée McCord", type: "landmark", latitude: 45.5033, longitude: -73.5742),
+        LocalLandmark(id: "gare-centrale", name: "Gare Centrale", type: "landmark", latitude: 45.4998, longitude: -73.5670),
+        LocalLandmark(id: "cathedrale", name: "Cathédrale Marie-Reine-du-Monde", type: "landmark", latitude: 45.4993, longitude: -73.5680),
+        LocalLandmark(id: "habitat-67", name: "Habitat 67", type: "landmark", latitude: 45.4978, longitude: -73.5432),
+        LocalLandmark(id: "biosphere", name: "Biosphère", type: "landmark", latitude: 45.5145, longitude: -73.5312),
+        LocalLandmark(id: "tour-horloge", name: "Tour de l'Horloge", type: "landmark", latitude: 45.5048, longitude: -73.5451),
+        LocalLandmark(id: "place-ville-marie", name: "Place Ville Marie", type: "landmark", latitude: 45.5014, longitude: -73.5693),
+        LocalLandmark(id: "complexe-desjardins", name: "Complexe Desjardins", type: "landmark", latitude: 45.5082, longitude: -73.5632),
+        LocalLandmark(id: "palais-congres", name: "Palais des congrès", type: "landmark", latitude: 45.5047, longitude: -73.5612),
+        LocalLandmark(id: "quartier-spectacles", name: "Quartier des spectacles", type: "landmark", latitude: 45.5088, longitude: -73.5668),
+        LocalLandmark(id: "canal-lachine", name: "Canal de Lachine", type: "landmark", latitude: 45.4820, longitude: -73.5705),
+        LocalLandmark(id: "chinatown", name: "Chinatown Gate", type: "landmark", latitude: 45.5072, longitude: -73.5602),
+    ]
+}
+
+// MARK: - MapView
+
 struct MapView: View {
     @EnvironmentObject var viewModel: AppViewModel
-    @StateObject private var locationManager = LocationManager()
 
-    // Always centered on LaSalle College
     static let lasalle = CLLocationCoordinate2D(latitude: 45.4916, longitude: -73.5818)
 
     @State private var region = MKCoordinateRegion(
@@ -26,10 +109,12 @@ struct MapView: View {
     @State private var showLeaderboard = false
 
     @State private var selectedDistance: DistanceFilter = .fiveKm
+    @State private var selectedLandmark: LocalLandmark?
     @State private var selectedCheckpoint: Checkpoint?
     @State private var showCheckpointChat = false
     @State private var syncTimer: Timer?
     @State private var showDistanceAlert = false
+    @State private var hasSynced = false
 
     let brandOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
 
@@ -74,10 +159,6 @@ struct MapView: View {
         }
     }
 
-    var nearbyCheckpoints: [Checkpoint] {
-        viewModel.checkpoints
-    }
-
     var body: some View {
         ZStack {
             Map(coordinateRegion: $region,
@@ -85,7 +166,6 @@ struct MapView: View {
                 annotationItems: mapAnnotations) { item in
                 MapAnnotation(coordinate: item.coordinate) {
                     if item.isMe {
-                        // Current user — orange pulsing dot
                         VStack(spacing: 2) {
                             ZStack {
                                 Circle()
@@ -130,11 +210,9 @@ struct MapView: View {
                                 .shadow(radius: 1)
                         }
                     } else {
+                        // Checkpoint / Landmark pin
                         Button {
-                            selectedCheckpoint = viewModel.checkpoints.first { $0.id == item.id }
-                            if let cp = selectedCheckpoint {
-                                checkCheckpointProximity(cp)
-                            }
+                            handleLandmarkTap(item)
                         } label: {
                             VStack(spacing: 2) {
                                 Image(systemName: iconForCheckpoint(item.checkpointType))
@@ -165,7 +243,6 @@ struct MapView: View {
             // Overlay buttons
             VStack {
                 HStack {
-                    // Zoom buttons (top left) — ORANGE
                     VStack(spacing: 8) {
                         glassButton(icon: "plus", tint: brandOrange) {
                             withAnimation {
@@ -185,20 +262,15 @@ struct MapView: View {
                     Spacer()
 
                     VStack(spacing: 10) {
-                        // Friend picker
                         glassButton(icon: "person.2.fill", tint: brandOrange) {
                             showFriendPicker = true
                         }
-
-                        // Center on LaSalle
                         glassButton(icon: "mappin.and.ellipse", tint: brandOrange) {
                             withAnimation {
                                 region.center = MapView.lasalle
                                 region.span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
                             }
                         }
-
-                        // Leaderboard
                         glassButton(icon: "trophy.fill", tint: .yellow) {
                             showLeaderboard = true
                         }
@@ -254,9 +326,13 @@ struct MapView: View {
         }
         .onAppear {
             startSyncTimer()
-            Task {
-                await viewModel.fetchNearbyCheckpoints(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
-                await searchAndSaveLocalPlaces()
+            // Seed to Firestore in background (idempotent) so chat works
+            if !hasSynced {
+                hasSynced = true
+                Task {
+                    await seedCheckpointsToFirestore()
+                    await viewModel.fetchNearbyCheckpoints(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
+                }
             }
         }
         .onDisappear {
@@ -303,7 +379,7 @@ struct MapView: View {
         }
     }
 
-    // MARK: - Annotations
+    // MARK: - Annotations (local landmarks — always visible!)
 
     var mapAnnotations: [MapItem] {
         var items: [MapItem] = []
@@ -316,9 +392,11 @@ struct MapView: View {
             coordinate: MapView.lasalle,
             isFriend: false,
             isMe: true,
-            checkpointType: ""
+            checkpointType: "",
+            landmarkID: nil
         ))
 
+        // Friends
         for friend in visibleFriends {
             items.append(MapItem(
                 id: friend.id,
@@ -326,20 +404,60 @@ struct MapView: View {
                 coordinate: CLLocationCoordinate2D(latitude: friend.latitude, longitude: friend.longitude),
                 isFriend: true,
                 isMe: false,
-                checkpointType: ""
+                checkpointType: "",
+                landmarkID: nil
             ))
         }
-        for cp in nearbyCheckpoints {
+
+        // Local landmarks — always visible, no Firestore dependency
+        for lm in LocalLandmark.allLandmarks {
             items.append(MapItem(
-                id: cp.id,
-                name: cp.name,
-                coordinate: CLLocationCoordinate2D(latitude: cp.latitude, longitude: cp.longitude),
+                id: "lm_\(lm.id)",
+                name: lm.name,
+                coordinate: lm.coordinate,
                 isFriend: false,
                 isMe: false,
-                checkpointType: cp.type
+                checkpointType: lm.type,
+                landmarkID: lm.id
             ))
         }
+
         return items
+    }
+
+    // MARK: - Landmark Tap → Open Chat
+
+    func handleLandmarkTap(_ item: MapItem) {
+        guard let lmID = item.landmarkID,
+              let landmark = LocalLandmark.allLandmarks.first(where: { $0.id == lmID }) else { return }
+
+        let distanceMeters = checkDistance(to: landmark.coordinate)
+
+        if distanceMeters <= 80 {
+            // Find or create a Checkpoint object for the chat
+            let firestoreID = landmark.firestoreID
+            if let existing = viewModel.checkpoints.first(where: { $0.id == firestoreID }) {
+                selectedCheckpoint = existing
+            } else {
+                // Build a local Checkpoint so chat can open
+                selectedCheckpoint = Checkpoint(id: firestoreID, dict: [
+                    "name": landmark.name,
+                    "type": landmark.type,
+                    "latitude": landmark.latitude,
+                    "longitude": landmark.longitude
+                ])
+            }
+            showCheckpointChat = true
+        } else {
+            viewModel.errorMessage = "You need to be within 80m to interact! You are \(Int(distanceMeters))m away."
+            showDistanceAlert = true
+        }
+    }
+
+    func checkDistance(to coordinate: CLLocationCoordinate2D) -> Double {
+        let myLoc = CLLocation(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
+        let targetLoc = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        return targetLoc.distance(from: myLoc)
     }
 
     // MARK: - Helpers
@@ -362,7 +480,6 @@ struct MapView: View {
             Task { @MainActor in
                 await viewModel.updateMyLocation(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
                 await viewModel.refreshFriendsLocations()
-                await viewModel.fetchNearbyCheckpoints(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
             }
         }
         Task {
@@ -371,81 +488,11 @@ struct MapView: View {
         }
     }
 
-    func checkCheckpointProximity(_ checkpoint: Checkpoint) {
-        let cpLoc = CLLocation(latitude: checkpoint.latitude, longitude: checkpoint.longitude)
-        let myLoc = CLLocation(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
-        let distanceMeters = cpLoc.distance(from: myLoc)
+    // MARK: - Seed to Firestore (background, idempotent)
 
-        if distanceMeters <= 80 {
-            selectedCheckpoint = checkpoint
-            showCheckpointChat = true
-        } else {
-            viewModel.errorMessage = "You need to be within 80m to interact! You are \(Int(distanceMeters))m away."
-            showDistanceAlert = true
-        }
-    }
-
-    // MARK: - Seed Checkpoints
-
-    func searchAndSaveLocalPlaces() async {
-        if !viewModel.checkpoints.isEmpty { return }
-        await seedMontrealLandmarks()
-        await viewModel.fetchNearbyCheckpoints(latitude: MapView.lasalle.latitude, longitude: MapView.lasalle.longitude)
-    }
-
-    func seedMontrealLandmarks() async {
-        let landmarks: [(name: String, type: String, lat: Double, lon: Double)] = [
-            ("LaSalle College", "school", 45.4916, -73.5818),
-            ("Dawson College", "school", 45.4890, -73.5785),
-            ("Concordia University (SGW)", "school", 45.4953, -73.5788),
-            ("Concordia University (Loyola)", "school", 45.4584, -73.6401),
-            ("McGill University", "school", 45.5048, -73.5772),
-            ("ETS", "school", 45.4945, -73.5627),
-            ("UQAM", "school", 45.5095, -73.5685),
-            ("Université de Montréal", "school", 45.5017, -73.6153),
-            ("Polytechnique Montréal", "school", 45.5046, -73.6130),
-            ("HEC Montréal", "school", 45.5013, -73.6192),
-            ("Collège de Maisonneuve", "school", 45.5535, -73.5490),
-            ("Vanier College", "school", 45.4672, -73.6286),
-            ("Collège Jean-de-Brébeuf", "school", 45.5015, -73.6232),
-            ("Marianopolis College", "school", 45.4862, -73.5843),
-            ("Parc du Mont-Royal", "park", 45.5048, -73.5874),
-            ("Square Dorchester", "park", 45.4988, -73.5726),
-            ("Parc Émilie-Gamelin", "park", 45.5162, -73.5610),
-            ("Place des Arts", "park", 45.5081, -73.5668),
-            ("Jardin botanique de Montréal", "park", 45.5596, -73.5507),
-            ("Parc La Fontaine", "park", 45.5268, -73.5696),
-            ("Parc Jean-Drapeau", "park", 45.5134, -73.5340),
-            ("Parc Jarry", "park", 45.5339, -73.6271),
-            ("Parc Maisonneuve", "park", 45.5551, -73.5525),
-            ("Parc Angrignon", "park", 45.4467, -73.6042),
-            ("Square Saint-Louis", "park", 45.5165, -73.5669),
-            ("Parc Jeanne-Mance", "park", 45.5110, -73.5815),
-            ("Westmount Park", "park", 45.4843, -73.5955),
-            ("Centre Bell", "landmark", 45.4960, -73.5693),
-            ("Basilique Notre-Dame", "landmark", 45.5046, -73.5566),
-            ("Oratoire Saint-Joseph", "landmark", 45.4920, -73.6170),
-            ("Stade olympique", "landmark", 45.5579, -73.5515),
-            ("Vieux-Port de Montréal", "landmark", 45.5075, -73.5530),
-            ("Marché Atwater", "landmark", 45.4810, -73.5768),
-            ("Marché Jean-Talon", "landmark", 45.5362, -73.6154),
-            ("Musée des beaux-arts", "landmark", 45.4985, -73.5796),
-            ("Musée McCord", "landmark", 45.5033, -73.5742),
-            ("Gare Centrale", "landmark", 45.4998, -73.5670),
-            ("Cathédrale Marie-Reine-du-Monde", "landmark", 45.4993, -73.5680),
-            ("Habitat 67", "landmark", 45.4978, -73.5432),
-            ("Biosphère", "landmark", 45.5145, -73.5312),
-            ("Tour de l'Horloge", "landmark", 45.5048, -73.5451),
-            ("Place Ville Marie", "landmark", 45.5014, -73.5693),
-            ("Complexe Desjardins", "landmark", 45.5082, -73.5632),
-            ("Palais des congrès", "landmark", 45.5047, -73.5612),
-            ("Quartier des spectacles", "landmark", 45.5088, -73.5668),
-            ("Canal de Lachine", "landmark", 45.4820, -73.5705),
-            ("Chinatown Gate", "landmark", 45.5072, -73.5602),
-        ]
-
-        for lm in landmarks {
-            await viewModel.createCheckpoint(name: lm.name, type: lm.type, latitude: lm.lat, longitude: lm.lon)
+    func seedCheckpointsToFirestore() async {
+        for lm in LocalLandmark.allLandmarks {
+            await viewModel.createCheckpoint(name: lm.name, type: lm.type, latitude: lm.latitude, longitude: lm.longitude)
         }
     }
 }
@@ -459,6 +506,7 @@ struct MapItem: Identifiable {
     let isFriend: Bool
     let isMe: Bool
     let checkpointType: String
+    let landmarkID: String?  // links to LocalLandmark.id for tap handling
 }
 
 // MARK: - Friend Picker Sheet (Glass UI)
