@@ -15,50 +15,53 @@ struct MapView: View {
 
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 45.4916, longitude: -73.5818),
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
     )
 
-    // Friend visibility toggles: friendID -> visible
     @State private var friendVisibility: [String: Bool] = [:]
     @State private var showFriendPicker = false
     @State private var showLeaderboard = false
-    @State private var hasInitiallyPanned = false
 
-    // Distance filter
-    @State private var selectedDistance: DistanceFilter = .all
-
-    // Checkpoint interaction
+    @State private var selectedDistance: DistanceFilter = .fiveKm
     @State private var selectedCheckpoint: Checkpoint?
     @State private var showCheckpointChat = false
-
-    // Sync timer
     @State private var syncTimer: Timer?
     @State private var showDistanceAlert = false
 
+    let brandOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
+
     enum DistanceFilter: String, CaseIterable {
         case all = "All"
-        case halfMile = "0.5 mi"
-        case oneMile = "1 mi"
-        case fiveMiles = "5 mi"
+        case fiveKm = "5 km"
+        case oneKm = "1 km"
+        case fiveHundredM = "500 m"
+        case twoHundredM = "200 m"
 
         var meters: Double? {
             switch self {
             case .all: return nil
-            case .halfMile: return 804.7
-            case .oneMile: return 1609.3
-            case .fiveMiles: return 8046.7
+            case .fiveKm: return 5000
+            case .oneKm: return 1000
+            case .fiveHundredM: return 500
+            case .twoHundredM: return 200
+            }
+        }
+
+        var zoomDelta: Double {
+            switch self {
+            case .all: return 0.06
+            case .fiveKm: return 0.05
+            case .oneKm: return 0.012
+            case .fiveHundredM: return 0.006
+            case .twoHundredM: return 0.003
             }
         }
     }
 
-    // Friends filtered by visibility + distance
     var visibleFriends: [AppUser] {
         viewModel.friends.filter { friend in
-            // Check toggle
             guard friendVisibility[friend.id] ?? true else { return false }
-            // Check if they have a location
             guard friend.latitude != 0 || friend.longitude != 0 else { return false }
-            // Check distance filter
             if let maxDist = selectedDistance.meters, let userLoc = locationManager.userLocation {
                 let friendLoc = CLLocation(latitude: friend.latitude, longitude: friend.longitude)
                 let myLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
@@ -68,7 +71,6 @@ struct MapView: View {
         }
     }
 
-    // All checkpoints (shown on map, 80m check is only for interaction)
     var nearbyCheckpoints: [Checkpoint] {
         viewModel.checkpoints
     }
@@ -76,11 +78,10 @@ struct MapView: View {
     var body: some View {
         ZStack {
             Map(coordinateRegion: $region,
-                showsUserLocation: !locationManager.ghostMode,
+                showsUserLocation: locationManager.useCurrentLocation,
                 annotationItems: mapAnnotations) { item in
                 MapAnnotation(coordinate: item.coordinate) {
                     if item.isFriend {
-                        // Friend marker
                         VStack(spacing: 2) {
                             Circle()
                                 .fill(Color.blue)
@@ -100,7 +101,6 @@ struct MapView: View {
                                 .shadow(radius: 1)
                         }
                     } else {
-                        // Checkpoint marker
                         Button {
                             selectedCheckpoint = viewModel.checkpoints.first { $0.id == item.id }
                             if let cp = selectedCheckpoint {
@@ -138,99 +138,50 @@ struct MapView: View {
                 HStack {
                     // Zoom buttons (top left)
                     VStack(spacing: 8) {
-                        Button {
+                        glassButton(icon: "plus") {
                             withAnimation {
                                 region.span.latitudeDelta /= 2
                                 region.span.longitudeDelta /= 2
                             }
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(Color.black.opacity(0.6))
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
                         }
-
-                        Button {
+                        glassButton(icon: "minus") {
                             withAnimation {
                                 region.span.latitudeDelta *= 2
                                 region.span.longitudeDelta *= 2
                             }
-                        } label: {
-                            Image(systemName: "minus")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(Color.black.opacity(0.6))
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
                         }
                     }
                     .padding(.leading, 12)
 
                     Spacer()
-                    VStack(spacing: 12) {
-                        // Friend picker button
-                        Button {
+
+                    VStack(spacing: 10) {
+                        // Friend picker
+                        glassButton(icon: "person.2.fill", tint: brandOrange) {
                             showFriendPicker = true
-                        } label: {
-                            Image(systemName: "person.2.fill")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(Color.orange)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
                         }
 
-                        // Center on me button
-                        Button {
-                            centerOnUser()
-                        } label: {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
+                        // Center on Montreal
+                        glassButton(icon: "mappin.and.ellipse", tint: brandOrange) {
+                            centerOnDefault()
                         }
 
-                        // Location toggle button (off by default)
-                        Button {
-                            locationManager.ghostMode.toggle()
-                            if locationManager.ghostMode {
-                                // Switched to ghost mode — back to Montreal
+                        // Use current location toggle
+                        glassButton(
+                            icon: locationManager.useCurrentLocation ? "location.fill" : "location.slash.fill",
+                            tint: locationManager.useCurrentLocation ? .green : Color.white.opacity(0.5)
+                        ) {
+                            locationManager.useCurrentLocation.toggle()
+                            if !locationManager.useCurrentLocation {
                                 withAnimation {
                                     region.center = LocationManager.defaultCoordinate
                                 }
-                            } else {
-                                // User turned on real location — will request permission
-                                hasInitiallyPanned = false
                             }
-                        } label: {
-                            Image(systemName: locationManager.ghostMode ? "location.slash.fill" : "location.fill")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(locationManager.ghostMode ? Color.gray : Color.green)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
                         }
 
-                        // Leaderboard button
-                        Button {
+                        // Leaderboard
+                        glassButton(icon: "trophy.fill", tint: .yellow) {
                             showLeaderboard = true
-                        } label: {
-                            Image(systemName: "trophy.fill")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(Color.yellow)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
                         }
                     }
                     .padding(.trailing, 12)
@@ -240,32 +191,51 @@ struct MapView: View {
                 Spacer()
 
                 // Distance filter bar
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ForEach(DistanceFilter.allCases, id: \.self) { filter in
                         Button {
                             selectedDistance = filter
+                            withAnimation {
+                                region.span = MKCoordinateSpan(
+                                    latitudeDelta: filter.zoomDelta,
+                                    longitudeDelta: filter.zoomDelta
+                                )
+                            }
                         } label: {
                             Text(filter.rawValue)
-                                .font(.system(size: 12, weight: .semibold))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(selectedDistance == filter ? Color.orange : Color.white.opacity(0.9))
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(
+                                    Group {
+                                        if selectedDistance == filter {
+                                            brandOrange
+                                        } else {
+                                            Color.white.opacity(0.15)
+                                        }
+                                    }
+                                )
                                 .foregroundColor(selectedDistance == filter ? .white : .primary)
-                                .cornerRadius(16)
-                                .shadow(radius: 2)
+                                .cornerRadius(14)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                )
                         }
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
+                .cornerRadius(20)
+                .padding(.horizontal, 12)
                 .padding(.bottom, 12)
             }
         }
         .onAppear {
-            // Do NOT request permission or start tracking on appear
-            // Location is off by default (ghost mode = on)
             startSyncTimer()
-            // Fetch checkpoints immediately using Montreal default
             Task {
-                let center = locationManager.userLocation ?? LocationManager.defaultCoordinate
+                let center = LocationManager.defaultCoordinate
                 await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
                 await searchAndSaveLocalPlaces()
             }
@@ -273,17 +243,6 @@ struct MapView: View {
         .onDisappear {
             syncTimer?.invalidate()
             syncTimer = nil
-        }
-        .onReceive(locationManager.$userLocation) { newLoc in
-            if let loc = newLoc, !hasInitiallyPanned {
-                region.center = loc
-                hasInitiallyPanned = true
-                // Now that we have real location, fetch checkpoints and search for places
-                Task {
-                    await viewModel.fetchNearbyCheckpoints(latitude: loc.latitude, longitude: loc.longitude)
-                    await searchAndSaveLocalPlaces()
-                }
-            }
         }
         .sheet(isPresented: $showFriendPicker) {
             FriendPickerSheet(
@@ -306,10 +265,29 @@ struct MapView: View {
         }
     }
 
-    // Combine friends + checkpoints into one annotation array for the map
+    // MARK: - Glass Button
+
+    @ViewBuilder
+    func glassButton(icon: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(tint)
+                .frame(width: 44, height: 44)
+                .background(.ultraThinMaterial)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        }
+    }
+
+    // MARK: - Annotations
+
     var mapAnnotations: [MapItem] {
         var items: [MapItem] = []
-
         for friend in visibleFriends {
             items.append(MapItem(
                 id: friend.id,
@@ -319,7 +297,6 @@ struct MapView: View {
                 checkpointType: ""
             ))
         }
-
         for cp in nearbyCheckpoints {
             items.append(MapItem(
                 id: cp.id,
@@ -329,7 +306,6 @@ struct MapView: View {
                 checkpointType: cp.type
             ))
         }
-
         return items
     }
 
@@ -343,14 +319,13 @@ struct MapView: View {
 
     func colorForCheckpoint(_ type: String) -> Color {
         if type == "school" { return .purple }
-        if type == "landmark" { return .orange }
+        if type == "landmark" { return brandOrange }
         return .green
     }
 
-    func centerOnUser() {
-        let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
+    func centerOnDefault() {
         withAnimation {
-            region.center = loc
+            region.center = LocationManager.defaultCoordinate
         }
     }
 
@@ -358,16 +333,12 @@ struct MapView: View {
         syncTimer?.invalidate()
         syncTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
             Task { @MainActor in
-                // Upload my location (ghost mode sends LaSalle College coords)
                 let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
                 await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
-                // Refresh friend locations
                 await viewModel.refreshFriendsLocations()
-                // Refresh checkpoints
                 await viewModel.fetchNearbyCheckpoints(latitude: region.center.latitude, longitude: region.center.longitude)
             }
         }
-        // Also do an immediate sync
         Task {
             let loc = locationManager.userLocation ?? LocationManager.defaultCoordinate
             await viewModel.updateMyLocation(latitude: loc.latitude, longitude: loc.longitude)
@@ -376,11 +347,7 @@ struct MapView: View {
     }
 
     func checkCheckpointProximity(_ checkpoint: Checkpoint) {
-        guard let userLoc = locationManager.userLocation else {
-            selectedCheckpoint = checkpoint
-            showCheckpointChat = true
-            return
-        }
+        let userLoc = locationManager.userLocation ?? LocationManager.defaultCoordinate
         let cpLoc = CLLocation(latitude: checkpoint.latitude, longitude: checkpoint.longitude)
         let myLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
         let distanceMeters = cpLoc.distance(from: myLoc)
@@ -389,54 +356,23 @@ struct MapView: View {
             selectedCheckpoint = checkpoint
             showCheckpointChat = true
         } else {
-            viewModel.errorMessage = "You need to be within 80 meters to interact! You are \(Int(distanceMeters))m away."
+            viewModel.errorMessage = "You need to be within 80m to interact! You are \(Int(distanceMeters))m away."
             showDistanceAlert = true
         }
     }
 
-    // Search for schools and parks near the user and save them as checkpoints
-    func searchAndSaveLocalPlaces() async {
-        let center = locationManager.userLocation ?? LocationManager.defaultCoordinate
+    // MARK: - Seed Checkpoints
 
-        // Only search if we have no checkpoints yet
+    func searchAndSaveLocalPlaces() async {
         if !viewModel.checkpoints.isEmpty { return }
 
-        let searchTypes = ["school", "park", "landmark"]
-        var createdAny = false
+        // Always seed Montreal landmarks — don't rely on MapKit search
+        await seedMontrealLandmarks()
 
-        for type in searchTypes {
-            let request = MKLocalSearch.Request()
-            request.naturalLanguageQuery = type
-            request.region = MKCoordinateRegion(
-                center: center,
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-            )
-
-            do {
-                let search = MKLocalSearch(request: request)
-                let response = try await search.start()
-                for mapItem in response.mapItems.prefix(5) {
-                    let name = mapItem.name ?? type.capitalized
-                    let lat = mapItem.placemark.coordinate.latitude
-                    let lon = mapItem.placemark.coordinate.longitude
-                    await viewModel.createCheckpoint(name: name, type: type, latitude: lat, longitude: lon)
-                    createdAny = true
-                }
-            } catch {
-                print("Search error for \(type): \(error)")
-            }
-        }
-
-        // If MapKit search returned nothing, seed hardcoded Montreal landmarks
-        if !createdAny {
-            await seedMontrealLandmarks()
-        }
-
-        // Re-fetch after creating
+        let center = LocationManager.defaultCoordinate
         await viewModel.fetchNearbyCheckpoints(latitude: center.latitude, longitude: center.longitude)
     }
 
-    // Hardcoded Montreal landmarks — always seeded as fallback
     func seedMontrealLandmarks() async {
         let landmarks: [(name: String, type: String, lat: Double, lon: Double)] = [
             // === Schools & Colleges ===
@@ -509,56 +445,79 @@ struct MapItem: Identifiable {
     let checkpointType: String
 }
 
-// MARK: - Friend Picker Sheet
+// MARK: - Friend Picker Sheet (Glass UI)
 
 struct FriendPickerSheet: View {
     let friends: [AppUser]
     @Binding var friendVisibility: [String: Bool]
     @Environment(\.dismiss) var dismiss
 
+    let brandOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
+
     var body: some View {
         NavigationView {
-            List {
-                if friends.isEmpty {
-                    Text("No friends added yet.")
-                        .foregroundColor(.secondary)
-                        .italic()
-                } else {
-                    ForEach(friends) { friend in
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(Color.blue.opacity(0.15))
-                                .frame(width: 40, height: 40)
-                                .overlay(
-                                    Text(String(friend.username.prefix(1)).uppercased())
-                                        .font(.headline)
-                                        .foregroundColor(.blue)
-                                )
+            ZStack {
+                Color(.systemGroupedBackground).ignoresSafeArea()
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(friend.username)
-                                    .font(.headline)
-                                if friend.latitude != 0 || friend.longitude != 0 {
-                                    Text("Location available")
-                                        .font(.caption)
-                                        .foregroundColor(.green)
-                                } else {
-                                    Text("No location shared")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        if friends.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "person.2.slash")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.secondary)
+                                Text("No friends added yet.")
+                                    .foregroundColor(.secondary)
                             }
+                            .padding(.top, 60)
+                        } else {
+                            ForEach(friends) { friend in
+                                HStack(spacing: 14) {
+                                    Circle()
+                                        .fill(brandOrange.opacity(0.15))
+                                        .frame(width: 44, height: 44)
+                                        .overlay(
+                                            Text(String(friend.username.prefix(1)).uppercased())
+                                                .font(.system(size: 18, weight: .bold))
+                                                .foregroundColor(brandOrange)
+                                        )
 
-                            Spacer()
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(friend.username)
+                                            .font(.system(size: 16, weight: .semibold))
+                                        if friend.latitude != 0 || friend.longitude != 0 {
+                                            Label("Location available", systemImage: "location.fill")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.green)
+                                        } else {
+                                            Label("No location", systemImage: "location.slash")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
 
-                            Toggle("", isOn: Binding(
-                                get: { friendVisibility[friend.id] ?? true },
-                                set: { friendVisibility[friend.id] = $0 }
-                            ))
-                            .labelsHidden()
+                                    Spacer()
+
+                                    Toggle("", isOn: Binding(
+                                        get: { friendVisibility[friend.id] ?? true },
+                                        set: { friendVisibility[friend.id] = $0 }
+                                    ))
+                                    .labelsHidden()
+                                    .tint(brandOrange)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(16)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                )
+                            }
                         }
-                        .padding(.vertical, 4)
                     }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
                 }
             }
             .navigationTitle("Show Friends")
@@ -566,6 +525,8 @@ struct FriendPickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .foregroundColor(brandOrange)
+                        .fontWeight(.semibold)
                 }
             }
         }
